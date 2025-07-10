@@ -76,10 +76,12 @@ jobs:
                     wrangler pages deploy deploy \
                       --project-name=smartcharts-champion-jim \
                       --branch $BRANCH_SLUG
+                      --commit-dirty=true
                   else
                     wrangler pages deploy deploy \
                       --project-name=smartcharts-champion-jim \
                       --branch master
+                      --commit-dirty=true
                   fi
               env:
                 CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
