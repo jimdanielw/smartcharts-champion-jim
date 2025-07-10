@@ -74,11 +74,11 @@ jobs:
                   if [[ "${{ github.event_name }}" == "pull_request" ]]; then
                     BRANCH_SLUG=$(echo "${{ github.head_ref }}" | sed 's|/|-|g' | sed 's|[^a-zA-Z0-9_-]||g')
                     wrangler pages deploy deploy \
-                      --project-name=smartcharts-champion \
+                      --project-name=smartcharts-champion-jim \
                       --branch $BRANCH_SLUG
                   else
                     wrangler pages deploy deploy \
-                      --project-name=smartcharts-champion \
+                      --project-name=smartcharts-champion-jim \
                       --branch master
                   fi
               env:
@@ -96,7 +96,7 @@ jobs:
                       const branch = '${{ github.head_ref }}'
                         .replace(/\//g, '-')
                         .replace(/[^a-zA-Z0-9_-]/g, '');
-                      const previewUrl = `https://${branch}--smartcharts-champion.pages.dev`;
+                      const previewUrl = `https://${branch}--smartcharts-champion-jim.pages.dev`;
                       const commentBody = `🚀 Preview deployment is ready!
 
                       **Preview URL:** [${previewUrl}](${previewUrl})`;
