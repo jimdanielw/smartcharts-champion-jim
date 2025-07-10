@@ -121,7 +121,7 @@
         "po-loader": "^0.7.0",
         "po2json": "^1.0.0-alpha",
         "postcss": "^8.4.38",
-        "postcss-import": "^15.1.0",
+        "postcss-import": "^16.1.1",
         "postcss-inline-svg": "^6.0.0",
         "postcss-loader": "^7.3.0",
         "postcss-preset-env": "^8.3.2",
