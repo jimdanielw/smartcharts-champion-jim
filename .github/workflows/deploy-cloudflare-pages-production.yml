@@ -1,127 +1,116 @@
 name: Deploy to Cloudflare Pages
 
 on:
-  push:
-    branches:
-      - master
-  pull_request:
-    branches:
-      - master
+    push:
+        branches:
+            - master
+    pull_request:
+        branches:
+            - master
+
+permissions:
+    contents: read
+    deployments: write
+    pull-requests: write
+    statuses: write
 
 env:
-  FLUTTER_VERSION: '3.24.1'
-  FLUTTER_WEB_RENDERER: 'html'
-  NODE_VERSION: '20.x'
+    FLUTTER_VERSION: '3.24.1'
+    FLUTTER_WEB_RENDERER: 'html'
+    NODE_VERSION: '20.x'
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    environment: Production
+    build-and-deploy:
+        runs-on: ubuntu-latest
+        environment: Production
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ env.NODE_VERSION }}
+                  cache: 'npm'
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: stable
+            - name: Setup Flutter
+              uses: subosito/flutter-action@v2
+              with:
+                  flutter-version: ${{ env.FLUTTER_VERSION }}
+                  channel: stable
 
-      - name: Install Node.js dependencies
-        run: npm ci
+            - name: Install dependencies
+              run: npm ci
 
-      - name: Build Flutter chart component
-        run: |
-          cd chart_app
-          flutter pub get
-          flutter build web --web-renderer=${{ env.FLUTTER_WEB_RENDERER }} --release
-          cd ..
+            - name: Build Flutter chart component
+              run: |
+                  cd chart_app
+                  flutter pub get
+                  flutter build web --web-renderer=${{ env.FLUTTER_WEB_RENDERER }} --release
+                  cd ..
 
-      - name: Build application
-        run: npm run build:app
+            - name: Build application
+              run: npm run build:app
 
-      - name: Prepare deployment files
-        run: |
-          mkdir -p deploy
-          cp index.html deploy/
-          cp manifest.json deploy/
-          cp sw.js deploy/
-          cp nojs-smartcharts.css deploy/
-          cp -r dist deploy/
-          if [ -d "sass/favicons" ]; then
-            mkdir -p deploy/sass
-            cp -r sass/favicons deploy/sass/
-          fi
+            - name: Prepare deployment files
+              run: |
+                  mkdir -p deploy
+                  cp index.html manifest.json sw.js nojs-smartcharts.css deploy/
+                  cp -r dist deploy/
+                  if [ -d "sass/favicons" ]; then
+                    mkdir -p deploy/sass
+                    cp -r sass/favicons deploy/sass/
+                  fi
 
-  deploy-production:
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-    environment: Production
+            - name: Install Wrangler
+              run: npm install -g wrangler@3.1.0
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+            - name: Deploy to Cloudflare Pages
+              run: wrangler pages deploy deploy --project-name=smartcharts-champion
+              env:
+                  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+                  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      - name: Install Wrangler
-        run: npm install -g wrangler@3.1.0
+            - name: Comment preview URL on PR
+              if: github.event_name == 'pull_request'
+              uses: actions/github-script@v7
+              with:
+                  github-token: ${{ secrets.CLI_PAT }}
+                  script: |
+                      const branch = '${{ github.head_ref }}'
+                        .replace(/\//g, '-')
+                        .replace(/[^a-zA-Z0-9-_]/g, '');
+                      const previewUrl = `https://${branch}--smartcharts-champion.pages.dev`;
+                      const commentBody = `🚀 Preview deployment is ready!
 
-      - name: Deploy to Cloudflare Pages (Production)
-        run: wrangler pages deploy deploy --project-name=smartcharts-champion
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+                      **Preview URL:** [${previewUrl}](${previewUrl})`;
 
-  comment-preview-url:
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    steps:
-      - name: Comment preview URL on PR
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const branch = '${{ github.head_ref }}'
-              .replace(/\//g, '-')
-              .replace(/[^a-zA-Z0-9-_]/g, '');
-            const previewUrl = `https://${branch}--smartcharts-champion.pages.dev`;
-            const commentBody = `🚀 Preview deployment is ready!
+                      const { data: comments } = await github.rest.issues.listComments({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        issue_number: context.issue.number,
+                      });
 
-            **Preview URL:** [${previewUrl}](${previewUrl})`;
+                      const botComment = comments.find(comment =>
+                        comment.user.type === 'Bot' &&
+                        comment.body.includes('🚀 Preview deployment')
+                      );
 
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
-
-            const botComment = comments.find(comment =>
-              comment.user.type === 'Bot' &&
-              comment.body.includes('🚀 Preview deployment')
-            );
-
-            if (botComment) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: botComment.id,
-                body: commentBody
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: commentBody
-              });
-            }
+                      if (botComment) {
+                        await github.rest.issues.updateComment({
+                          owner: context.repo.owner,
+                          repo: context.repo.repo,
+                          comment_id: botComment.id,
+                          body: commentBody
+                        });
+                      } else {
+                        await github.rest.issues.createComment({
+                          owner: context.repo.owner,
+                          repo: context.repo.repo,
+                          issue_number: context.issue.number,
+                          body: commentBody
+                        });
+                      }
