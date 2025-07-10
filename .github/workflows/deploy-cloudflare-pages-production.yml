@@ -70,17 +70,16 @@ jobs:
 
             - name: Deploy to Cloudflare Pages
               run: |
-                  echo "TEST_ENV ${{env.TEST_ENV}}"
                   if [[ "${{ github.event_name }}" == "pull_request" ]]; then
                     BRANCH_SLUG=$(echo "${{ github.head_ref }}" | sed 's|/|-|g' | sed 's|[^a-zA-Z0-9_-]||g')
                     wrangler pages deploy deploy \
                       --project-name=smartcharts-champion-jim \
-                      --branch $BRANCH_SLUG
+                      --branch $BRANCH_SLUG \
                       --commit-dirty=true
                   else
                     wrangler pages deploy deploy \
                       --project-name=smartcharts-champion-jim \
-                      --branch master
+                      --branch master \
                       --commit-dirty=true
                   fi
               env:
