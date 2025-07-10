@@ -82,10 +82,8 @@ jobs:
                       --branch master
                   fi
               env:
-                  # CLOUDFLARE_API_TOKEN: ${{ secrets.TEST_ENV }}
-                  # CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-                  CLOUDFLARE_API_TOKEN: ${{ 'z_Qzxzyv_K8GiGGZXijw-0tviK4Xbri89DyIrHTt' }}
-                  CLOUDFLARE_ACCOUNT_ID: ${{ '8412d6a4f9a7dbb1748fb6069187ddf7' }}
+                  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+                  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
             - name: Comment preview URL on PR
               if: github.event_name == 'pull_request'
