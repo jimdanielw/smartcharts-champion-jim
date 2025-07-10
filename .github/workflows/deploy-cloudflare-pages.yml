@@ -69,14 +69,14 @@ jobs:
                     cp -r sass/favicons deploy/sass/
                   fi
 
+            - name: Install Wrangler
+              run: npm install -g wrangler@3.1.0
+
             - name: Deploy to Cloudflare Pages
-              uses: cloudflare/pages-action@v1
-              with:
-                  apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-                  accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-                  projectName: smartcharts-champion-jim
-                  directory: deploy
-                  gitHubToken: ${{ github.token }}
+              run: wrangler pages deploy deploy --project-name=smartcharts-champion
+              env:
+                  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+                  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
             - name: Add deployment URL comment (PR only)
               if: github.event_name == 'pull_request'
