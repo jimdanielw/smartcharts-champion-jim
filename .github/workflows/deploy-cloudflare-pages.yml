@@ -1,118 +1,118 @@
-name: Deploy to Cloudflare Pages
+# name: Deploy to Cloudflare Pages
 
-on:
-    push:
-        branches:
-            - master
-    pull_request:
-        branches:
-            - master
+# on:
+#     push:
+#         branches:
+#             - master
+#     pull_request:
+#         branches:
+#             - master
 
-env:
-    FLUTTER_VERSION: '3.24.1'
-    FLUTTER_WEB_RENDERER: 'html'
-    NODE_VERSION: '20.x'
+# env:
+#     FLUTTER_VERSION: '3.24.1'
+#     FLUTTER_WEB_RENDERER: 'html'
+#     NODE_VERSION: '20.x'
 
-jobs:
-    build-and-deploy:
-        runs-on: ubuntu-latest
-        environment: Production
+# jobs:
+#     build-and-deploy:
+#         runs-on: ubuntu-latest
+#         environment: Production
 
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
-              with:
-                  fetch-depth: 0
+#         steps:
+#             - name: Checkout repository
+#               uses: actions/checkout@v4
+#               with:
+#                   fetch-depth: 0
 
-            - name: Setup Node.js
-              uses: actions/setup-node@b39b52d1213e96004bfcb1c61a8a6fa8ab84f3e8
-              with:
-                  node-version: ${{ env.NODE_VERSION }}
-                  cache: 'npm'
+#             - name: Setup Node.js
+#               uses: actions/setup-node@b39b52d1213e96004bfcb1c61a8a6fa8ab84f3e8
+#               with:
+#                   node-version: ${{ env.NODE_VERSION }}
+#                   cache: 'npm'
 
-            - name: Setup Flutter
-              uses: subosito/flutter-action@48cafc24713cca54bbe03cdc3a423187d413aafa
-              with:
-                  flutter-version: ${{ env.FLUTTER_VERSION }}
-                  channel: 'stable'
+#             - name: Setup Flutter
+#               uses: subosito/flutter-action@48cafc24713cca54bbe03cdc3a423187d413aafa
+#               with:
+#                   flutter-version: ${{ env.FLUTTER_VERSION }}
+#                   channel: 'stable'
 
-            - name: Install dependencies
-              run: npm ci
+#             - name: Install dependencies
+#               run: npm ci
 
-            - name: Build Flutter chart component
-              run: |
-                  cd chart_app
-                  flutter pub get
-                  flutter build web --web-renderer=${{ env.FLUTTER_WEB_RENDERER }} --release
-                  cd ..
+#             - name: Build Flutter chart component
+#               run: |
+#                   cd chart_app
+#                   flutter pub get
+#                   flutter build web --web-renderer=${{ env.FLUTTER_WEB_RENDERER }} --release
+#                   cd ..
 
-            - name: Build application
-              run: npm run build:app
+#             - name: Build application
+#               run: npm run build:app
 
-            - name: Prepare deployment files
-              run: |
-                  # Create a deployment directory
-                  mkdir -p deploy
+#             - name: Prepare deployment files
+#               run: |
+#                   # Create a deployment directory
+#                   mkdir -p deploy
 
-                  # Copy main files
-                  cp index.html deploy/
-                  cp manifest.json deploy/
-                  cp sw.js deploy/
-                  cp nojs-smartcharts.css deploy/
+#                   # Copy main files
+#                   cp index.html deploy/
+#                   cp manifest.json deploy/
+#                   cp sw.js deploy/
+#                   cp nojs-smartcharts.css deploy/
 
-                  # Copy dist directory
-                  cp -r dist deploy/
+#                   # Copy dist directory
+#                   cp -r dist deploy/
 
-                  # Copy any additional assets if they exist
-                  if [ -d "sass/favicons" ]; then
-                    mkdir -p deploy/sass
-                    cp -r sass/favicons deploy/sass/
-                  fi
+#                   # Copy any additional assets if they exist
+#                   if [ -d "sass/favicons" ]; then
+#                     mkdir -p deploy/sass
+#                     cp -r sass/favicons deploy/sass/
+#                   fi
 
-            - name: Install Wrangler
-              run: npm install -g wrangler@3.1.0
+#             - name: Install Wrangler
+#               run: npm install -g wrangler@3.1.0
 
-            - name: Deploy to Cloudflare Pages
-              run: wrangler pages deploy deploy --project-name=smartcharts-champion
-              env:
-                  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-                  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+#             - name: Deploy to Cloudflare Pages
+#               run: wrangler pages deploy deploy --project-name=smartcharts-champion
+#               env:
+#                   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+#                   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-            - name: Add deployment URL comment (PR only)
-              if: github.event_name == 'pull_request'
-              uses: actions/github-script@v7
-              with:
-                  script: |
-                      const { data: comments } = await github.rest.issues.listComments({
-                        owner: context.repo.owner,
-                        repo: context.repo.repo,
-                        issue_number: context.issue.number,
-                      });
+#             - name: Add deployment URL comment (PR only)
+#               if: github.event_name == 'pull_request'
+#               uses: actions/github-script@v7
+#               with:
+#                   script: |
+#                       const { data: comments } = await github.rest.issues.listComments({
+#                         owner: context.repo.owner,
+#                         repo: context.repo.repo,
+#                         issue_number: context.issue.number,
+#                       });
 
-                      const botComment = comments.find(comment => 
-                        comment.user.type === 'Bot' && 
-                        comment.body.includes('🚀 Preview deployment')
-                      );
+#                       const botComment = comments.find(comment => 
+#                         comment.user.type === 'Bot' && 
+#                         comment.body.includes('🚀 Preview deployment')
+#                       );
 
-                      const deploymentUrl = `https://smartcharts-champion.pages.dev`;
-                      const commentBody = `🚀 Preview deployment is ready!
+#                       const deploymentUrl = `https://smartcharts-champion.pages.dev`;
+#                       const commentBody = `🚀 Preview deployment is ready!
 
-                      **Preview URL:** ${deploymentUrl}
+#                       **Preview URL:** ${deploymentUrl}
 
-                      Built with commit ${context.sha.substring(0, 7)}`;
+#                       Built with commit ${context.sha.substring(0, 7)}`;
 
-                      if (botComment) {
-                        await github.rest.issues.updateComment({
-                          owner: context.repo.owner,
-                          repo: context.repo.repo,
-                          comment_id: botComment.id,
-                          body: commentBody
-                        });
-                      } else {
-                        await github.rest.issues.createComment({
-                          owner: context.repo.owner,
-                          repo: context.repo.repo,
-                          issue_number: context.issue.number,
-                          body: commentBody
-                        });
-                      }
+#                       if (botComment) {
+#                         await github.rest.issues.updateComment({
+#                           owner: context.repo.owner,
+#                           repo: context.repo.repo,
+#                           comment_id: botComment.id,
+#                           body: commentBody
+#                         });
+#                       } else {
+#                         await github.rest.issues.createComment({
+#                           owner: context.repo.owner,
+#                           repo: context.repo.repo,
+#                           issue_number: context.issue.number,
+#                           body: commentBody
+#                         });
+#                       }
